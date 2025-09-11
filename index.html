@@ -122,8 +122,8 @@
 			let isSpeaking = false;
 			let speechUtterance = null;
 			let mouthAnimation = null;
-			let openWebUIEndpoint = 'https://personal-ai.nodemixaholic.com';
-			let apiKey = 'sk-6efb9b029ef54f46854bb3eaef9d28a9';
+			let openWebUIEndpoint = 'https://ollama-api.nodemixaholic.com';
+			let apiKey = '';
 			let modelName = 'sparksammy/samantha-super-s';
 			
 			let conversationHistory = [{ role: 'system', content: 'You are Samantha, a friendly and helpful AI companion.' }];
@@ -206,7 +206,7 @@ loader.load(
 				conversationHistory.push({ role: 'user', content: message });
 
 				try {
-					const response = await fetch(`${openWebUIEndpoint}/api/chat/completions`, {
+					const response = await fetch(`${openWebUIEndpoint}/v1/chat/completions`, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
