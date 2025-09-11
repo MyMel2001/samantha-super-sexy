@@ -96,7 +96,7 @@
 	</head>
 
 	<body>
-		<div id="status">Loading VRM model...</div>
+		<div id="status">Loading 3D model...</div>
 		<div id="chatHistory">
 			<div style="text-align: center; margin-bottom: 10px; font-weight: bold;">Chat History</div>
 		</div>
@@ -163,13 +163,7 @@
 			scene.add( light );
 
 
-
-  camera.position.set(0.0, 1.0, 5.0);
-
-  // controls
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0.0, 1.0, 0.0);
-  controls.update();
+  			camera.position.set(0.0, 1.0, 5.0);
 
   // --- Simple mouth geometry ---
   const mouthGeo = new THREE.CircleGeometry(0.08, 32); // radius 0.08
