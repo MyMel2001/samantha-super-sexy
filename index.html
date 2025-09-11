@@ -161,45 +161,29 @@
 			light.position.set( 1.0, 1.0, 1.0 ).normalize();
 			scene.add( light );
 
-			// --- Simple mouth geometry ---
-			const mouthGeo = new THREE.CircleGeometry(0.08, 32); 
-			const mouthMat = new THREE.MeshBasicMaterial({ color: 0xaa0000 });
-			mouthMesh = new THREE.Mesh(mouthGeo, mouthMat);
-			mouthMesh.position.set(0, 1.55, 0.52); 
-			mouthMesh.scale.set(1, 0.2, 1); 
-			scene.add(mouthMesh);
 
-			// --- Load GLTF/GLB model (textures included) ---
-			const gltfLoader = new GLTFLoader();
-			gltfLoader.load(
-				"samantha.glb", // or .gltf
-				(gltf) => {
-					currentModel = gltf.scene;
-					currentModel.scale.setScalar(1.0);
-					scene.add(currentModel);
+		// --- Load GLTF model with texture ---
+		const loader = new GLTFLoader();
+loader.load(
+  'samantha.glb',
+  (gltf) => {
+    if (!gltf.scene) {
+      console.error("GLTF has no scene!");
+      return;
+    }
+    currentModel = gltf.scene;
 
-					// optional: attach mouthMesh to head bone if exists
-					let headBone = null;
-					currentModel.traverse((node) => {
-						if (node.isBone && /head/i.test(node.name)) {
-							headBone = node;
-						}
-					});
-					if (headBone) {
-						headBone.add(mouthMesh);
-						mouthMesh.position.set(0, 0.15, 0.1);
-					}
-
-					status.textContent = "Ready to chat!";
-					status.style.background = "rgba(40, 167, 69, 0.8)";
-				},
-				undefined,
-				(err) => {
-					console.error("GLTF load error:", err);
-					status.textContent = "Failed to load model";
-					status.style.background = "rgba(220, 53, 69, 0.8)";
-				}
-			);
+    scene.add(currentModel);
+    status.textContent = "Ready to chat!";
+    status.style.background = "rgba(40,167,69,0.8)";
+  },
+  undefined,
+  (err) => {
+    console.error("GLTF load error:", err);
+    status.textContent = "Failed to load model";
+    status.style.background = "rgba(220,53,69,0.8)";
+  }
+);
 
 			// Chat function
 			function addMessageToHistory(message, isUser = false) {
