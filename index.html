@@ -110,7 +110,6 @@
 				"imports": {
 					"three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
 					"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
-					"@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3/lib/three-vrm.module.min.js"
 				}
 			}
 		</script>
@@ -119,7 +118,7 @@
 			import * as THREE from 'three';
 			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-			import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+			import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader'
 
 			// Chat and TTS variables
 			let isSpeaking = false;
@@ -127,7 +126,7 @@
 			let mouthAnimation = null;
 			let openWebUIEndpoint = 'https://your.openwebui.host'; // replace with your openwebui host
 			let apiKey = 'skskskskAnnaOOP'; // replace with your api key
-			let modelName = 'samantha-grok-viewerver'; // replace with your model name
+			let modelName = 'sparksammy/super-sexy-samantha'; // replace with your model name
 			
 			let conversationHistory = [{ role: 'system', content: 'You are Samantha, a friendly and helpful AI companion.' }];
 
@@ -163,124 +162,71 @@
 			light.position.set( 1.0, 1.0, 1.0 ).normalize();
 			scene.add( light );
 
-			// gltf and vrm
-			let currentVrm = undefined;
-			const loader = new GLTFLoader();
-			loader.crossOrigin = 'anonymous';
 
-			loader.register( ( parser ) => {
-				return new VRMLoaderPlugin( parser );
-			} );
 
-			loader.load(
-				// URL of the VRM you want to load
-				'Samantha.vrm',
+  camera.position.set(0.0, 1.0, 5.0);
 
-				// called when the resource is loaded
-				( gltf ) => {
-					const vrm = gltf.userData.vrm;
+  // controls
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0.0, 1.0, 0.0);
+  controls.update();
 
-					// calling these functions greatly improves the performance
-					VRMUtils.removeUnnecessaryVertices( gltf.scene );
-					VRMUtils.removeUnnecessaryJoints( gltf.scene );
+  // --- Simple mouth geometry ---
+  const mouthGeo = new THREE.CircleGeometry(0.08, 32); // radius 0.08
+  const mouthMat = new THREE.MeshBasicMaterial({ color: 0xaa0000 });
+  mouthMesh = new THREE.Mesh(mouthGeo, mouthMat);
+  mouthMesh.position.set(0, 1.55, 0.52); // adjust depending on model’s face
+  mouthMesh.scale.set(1, 0.2, 1); // start closed
+  scene.add(mouthMesh);
 
-					// Disable frustum culling
-					vrm.scene.traverse( ( obj ) => {
-						obj.frustumCulled = false;
-					} );
+	// FBX loading
+	const loader = new FBXLoader();
+	loader.load(
+		"samantha-x-posed.fbx",
+		(model) => {
+			currentModel = model;
+			model.scale.setScalar(0.01);
+			scene.add(model);
 
-					currentVrm = vrm;
-					blendShapeManager = vrm.expressionManager || vrm.blendShapeProxy;
-					console.log( vrm );
-					scene.add( vrm.scene );
-					
-					setNeutralPose(vrm);
-					
-					status.textContent = 'Ready to chat!';
-					status.style.background = 'rgba(40, 167, 69, 0.8)';
-				},
+			// --- Find head bone ---
+			let headBone = null;
+			model.traverse((node) => {
+			if (node.isBone && /head/i.test(node.name)) {
+				headBone = node;
+			}
+			});
 
-				// called while loading is progressing
-				( progress ) => {
-					const percent = 100.0 * ( progress.loaded / progress.total );
-					status.textContent = `Loading model... ${percent.toFixed(1)}%`;
-					console.log( 'Loading model...', percent, '%' );
-				},
+			if (headBone) {
+			console.log("Head bone found:", headBone.name);
+			headBone.add(mouthMesh);
+			mouthMesh.position.set(0, 0.15, 0.1); 
+			// relative offset from head bone (adjust as needed)
+			} else {
+			console.warn("No head bone found, keeping mouth at world position");
+			mouthMesh.position.set(0, 1.55, 0.52); 
+			scene.add(mouthMesh); // fallback
+			}
 
-				// called when loading has errors
-				( error ) => {
-					console.error( error );
-					status.textContent = 'Error loading model';
-					status.style.background = 'rgba(220, 53, 69, 0.8)';
-				}
-			);
+			status.textContent = "Ready to chat!";
+			status.style.background = "rgba(40, 167, 69, 0.8)";
+		},
+		undefined,
+		(err) => {
+			console.error("FBX load error:", err);
+			status.textContent = "Failed to load model";
+			status.style.background = "rgba(220, 53, 69, 0.8)";
+		}
+	);
 
+
+
+			
 			// helpers
 			const gridHelper = new THREE.GridHelper( 10, 10 );
 			scene.add( gridHelper );
 
 			const axesHelper = new THREE.AxesHelper( 5 );
 			scene.add( axesHelper );
-
-			// Pose and animation functions
-			function setNeutralPose(vrm) {
-				if (!vrm || !vrm.humanoid) {
-					console.log('VRM or humanoid not available');
-					return;
-				}
-				
-				console.log('Setting neutral pose...');
-				console.log('Available bones:', Object.keys(vrm.humanoid.humanBones));
-				
-				const pose = {};
-				const euler = new THREE.Euler();
-				const quat = new THREE.Quaternion();
-				
-				// leftUpperArm
-				euler.set(-0.3, 0, 0.8, 'XYZ');
-				quat.setFromEuler(euler);
-				pose.leftUpperArm = { rotation: quat.toArray() };
-				
-				// rightUpperArm
-				euler.set(0.3, 0, -0.8, 'XYZ');
-				quat.setFromEuler(euler);
-				pose.rightUpperArm = { rotation: quat.toArray() };
-				
-				// leftLowerArm
-				euler.set(0, 0, -0.1, 'XYZ');
-				quat.setFromEuler(euler);
-				pose.leftLowerArm = { rotation: quat.toArray() };
-				
-				// rightLowerArm
-				euler.set(0, 0, 0.1, 'XYZ');
-				quat.setFromEuler(euler);
-				pose.rightLowerArm = { rotation: quat.toArray() };
-				
-				// leftHand
-				euler.set(0, 0, -0.1, 'XYZ');
-				quat.setFromEuler(euler);
-				pose.leftHand = { rotation: quat.toArray() };
-				
-				// rightHand
-				euler.set(0, 0, 0.1, 'XYZ');
-				quat.setFromEuler(euler);
-				pose.rightHand = { rotation: quat.toArray() };
-				
-				// spine
-				euler.set(0, 0, 0, 'XYZ');
-				quat.setFromEuler(euler);
-				pose.spine = { rotation: quat.toArray() };
-				
-				// upperChest
-				pose.upperChest = { rotation: quat.toArray() };
-				
-				// head
-				pose.head = { rotation: quat.toArray() };
-				
-				vrm.humanoid.setNormalizedPose(pose);
-				
-				console.log('Neutral pose setup complete');
-			}
 
 			// Chat functionality
 			function addMessageToHistory(message, isUser = false) {
@@ -392,52 +338,6 @@
 				speechSynthesis.speak(speechUtterance);
 			}
 
-			function startMouthAnimation() {
-				if (!currentVrm) {
-					console.log('No VRM available for mouth animation');
-					return;
-				}
-
-				console.log('Starting mouth animation...');
-				console.log('Blend shape manager available:', !!blendShapeManager);
-				if (blendShapeManager) {
-					console.log('Available blend shapes:', Object.keys(blendShapeManager._expressionsMap || blendShapeManager._blendShapeMap || {}));
-				}
-
-				const startTime = Date.now();
-				mouthAnimation = setInterval(() => {
-					if (currentVrm && blendShapeManager) {
-						const time = (Date.now() - startTime) / 1000;
-						const mouthOpen = Math.abs(Math.sin(time * 5)) * 0.7;
-
-						blendShapeManager.setValue('aa', mouthOpen);
-						blendShapeManager.setValue('oh', mouthOpen * 0.5);
-
-						if (currentVrm.humanoid && currentVrm.humanoid.getRawBoneNode('jaw')) {
-							const jawBone = currentVrm.humanoid.getRawBoneNode('jaw');
-							jawBone.rotation.x = mouthOpen * 0.3;
-						}
-					}
-				}, 50);
-			}
-
-			function stopMouthAnimation() {
-				if (mouthAnimation) {
-					clearInterval(mouthAnimation);
-					mouthAnimation = null;
-				}
-
-				if (currentVrm && blendShapeManager) {
-					blendShapeManager.setValue('aa', 0);
-					blendShapeManager.setValue('oh', 0);
-				}
-				
-				if (currentVrm && currentVrm.humanoid && currentVrm.humanoid.getRawBoneNode('jaw')) {
-					const jawBone = currentVrm.humanoid.getRawBoneNode('jaw');
-					jawBone.rotation.x = 0;
-				}
-			}
-
 			// Event listeners
 			sendButton.addEventListener('click', sendMessage);
 			chatInput.addEventListener('keypress', (e) => {
@@ -462,18 +362,11 @@
 			const clock = new THREE.Clock();
 			clock.start();
 
+			// animate loop
 			function animate() {
-				requestAnimationFrame( animate );
-
-				// update vrm components
-				if ( currentVrm ) {
-					currentVrm.update( clock.getDelta() );
-				}
-
-				// render
-				renderer.render( scene, camera );
+				requestAnimationFrame(animate);
+				renderer.render(scene, camera);
 			}
-
 			animate();
 		</script>
 	</body>
