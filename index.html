@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html>
 	<head>
 		<meta charset="utf-8" />
@@ -109,120 +108,100 @@
 			{
 				"imports": {
 					"three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-					"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+					"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
 				}
 			}
 		</script>
 
 		<script type="module">
 			import * as THREE from 'three';
-			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-			import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader'
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-			// Chat and TTS variables
+			// Chat + TTS
 			let isSpeaking = false;
 			let speechUtterance = null;
 			let mouthAnimation = null;
-			let openWebUIEndpoint = 'https://personal-ai.nodemixaholic.com'; // replace with your openwebui host
-			let apiKey = 'sk-6efb9b029ef54f46854bb3eaef9d28a9'; // replace with your api key
-			let modelName = 'sparksammy/super-sexy-samantha'; // replace with your model name
+			let openWebUIEndpoint = 'https://personal-ai.nodemixaholic.com';
+			let apiKey = 'sk-6efb9b029ef54f46854bb3eaef9d28a9';
+			let modelName = 'sparksammy/super-sexy-samantha';
 			
 			let conversationHistory = [{ role: 'system', content: 'You are Samantha, a friendly and helpful AI companion.' }];
 
-			let blendShapeManager = null;
+			let currentModel = null;
+			let mouthMesh = null;
 
-			// DOM elements
+			// DOM
 			const chatInput = document.getElementById('chatInput');
 			const sendButton = document.getElementById('sendButton');
 			const status = document.getElementById('status');
 			const chatHistory = document.getElementById('chatHistory');
 
-			// renderer
-			const renderer = new THREE.WebGLRenderer();
+			// Renderer
+			const renderer = new THREE.WebGLRenderer({ antialias: true });
 			renderer.setSize( window.innerWidth, window.innerHeight );
 			renderer.setPixelRatio( window.devicePixelRatio );
 			document.body.appendChild( renderer.domElement );
 
-			// camera
+			// Camera
 			const camera = new THREE.PerspectiveCamera( 30.0, window.innerWidth / window.innerHeight, 0.1, 20.0 );
 			camera.position.set( 0.0, 1.0, 5.0 );
 
-			// camera controls
+			// Controls
 			const controls = new OrbitControls( camera, renderer.domElement );
 			controls.screenSpacePanning = true;
 			controls.target.set( 0.0, 1.0, 0.0 );
 			controls.update();
 
-			// scene
+			// Scene
 			const scene = new THREE.Scene();
 
-			// light
+			// Light
 			const light = new THREE.DirectionalLight( 0xffffff, Math.PI );
 			light.position.set( 1.0, 1.0, 1.0 ).normalize();
 			scene.add( light );
 
-
-  			camera.position.set(0.0, 1.0, 5.0);
-
-  // --- Simple mouth geometry ---
-  const mouthGeo = new THREE.CircleGeometry(0.08, 32); // radius 0.08
-  const mouthMat = new THREE.MeshBasicMaterial({ color: 0xaa0000 });
-  mouthMesh = new THREE.Mesh(mouthGeo, mouthMat);
-  mouthMesh.position.set(0, 1.55, 0.52); // adjust depending on model’s face
-  mouthMesh.scale.set(1, 0.2, 1); // start closed
-  scene.add(mouthMesh);
-
-	// FBX loading
-	const loader = new FBXLoader();
-	loader.load(
-		"samantha-naked-posed.fbx",
-		(model) => {
-			currentModel = model;
-			model.scale.setScalar(0.01);
-			scene.add(model);
-
-			// --- Find head bone ---
-			let headBone = null;
-			model.traverse((node) => {
-			if (node.isBone && /head/i.test(node.name)) {
-				headBone = node;
-			}
-			});
-
-			if (headBone) {
-			console.log("Head bone found:", headBone.name);
-			headBone.add(mouthMesh);
-			mouthMesh.position.set(0, 0.15, 0.1); 
-			// relative offset from head bone (adjust as needed)
-			} else {
-			console.warn("No head bone found, keeping mouth at world position");
+			// --- Simple mouth geometry ---
+			const mouthGeo = new THREE.CircleGeometry(0.08, 32); 
+			const mouthMat = new THREE.MeshBasicMaterial({ color: 0xaa0000 });
+			mouthMesh = new THREE.Mesh(mouthGeo, mouthMat);
 			mouthMesh.position.set(0, 1.55, 0.52); 
-			scene.add(mouthMesh); // fallback
-			}
+			mouthMesh.scale.set(1, 0.2, 1); 
+			scene.add(mouthMesh);
 
-			status.textContent = "Ready to chat!";
-			status.style.background = "rgba(40, 167, 69, 0.8)";
-		},
-		undefined,
-		(err) => {
-			console.error("FBX load error:", err);
-			status.textContent = "Failed to load model";
-			status.style.background = "rgba(220, 53, 69, 0.8)";
-		}
-	);
+			// --- Load GLTF/GLB model (textures included) ---
+			const gltfLoader = new GLTFLoader();
+			gltfLoader.load(
+				"samantha.glb", // or .gltf
+				(gltf) => {
+					currentModel = gltf.scene;
+					currentModel.scale.setScalar(1.0);
+					scene.add(currentModel);
 
+					// optional: attach mouthMesh to head bone if exists
+					let headBone = null;
+					currentModel.traverse((node) => {
+						if (node.isBone && /head/i.test(node.name)) {
+							headBone = node;
+						}
+					});
+					if (headBone) {
+						headBone.add(mouthMesh);
+						mouthMesh.position.set(0, 0.15, 0.1);
+					}
 
+					status.textContent = "Ready to chat!";
+					status.style.background = "rgba(40, 167, 69, 0.8)";
+				},
+				undefined,
+				(err) => {
+					console.error("GLTF load error:", err);
+					status.textContent = "Failed to load model";
+					status.style.background = "rgba(220, 53, 69, 0.8)";
+				}
+			);
 
-			
-			// helpers
-			const gridHelper = new THREE.GridHelper( 10, 10 );
-			scene.add( gridHelper );
-
-			const axesHelper = new THREE.AxesHelper( 5 );
-			scene.add( axesHelper );
-
-			// Chat functionality
+			// Chat function
 			function addMessageToHistory(message, isUser = false) {
 				const messageDiv = document.createElement('div');
 				messageDiv.className = `chat-message ${isUser ? 'user-message' : 'bot-message'}`;
@@ -235,7 +214,6 @@
 				const message = chatInput.value.trim();
 				if (!message || isSpeaking) return;
 
-				// Add user message to history
 				addMessageToHistory(message, true);
 				chatInput.value = '';
 				sendButton.disabled = true;
@@ -244,7 +222,6 @@
 				conversationHistory.push({ role: 'user', content: message });
 
 				try {
-					// Send to OpenAI-compatible API
 					const response = await fetch(`${openWebUIEndpoint}/api/chat/completions`, {
 						method: 'POST',
 						headers: {
@@ -257,61 +234,59 @@
 						})
 					});
 
-					if (!response.ok) {
-						throw new Error(`HTTP error! status: ${response.status}`);
-					}
+					if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
 					const data = await response.json();
 					const botResponse = data.choices?.[0]?.message?.content || 'Sorry, I couldn\'t generate a response.';
 
-					// Add bot response to history
 					addMessageToHistory(botResponse, false);
-
 					conversationHistory.push({ role: 'assistant', content: botResponse });
-
-					// Speak the response
 					speakText(botResponse);
 
 				} catch (error) {
 					console.error('Error:', error);
-					const errorMessage = 'Sorry, there was an error processing your request.';
-					addMessageToHistory(errorMessage, false);
+					addMessageToHistory('Sorry, there was an error processing your request.', false);
 					status.textContent = 'Error occurred';
 					status.style.background = 'rgba(220, 53, 69, 0.8)';
 					sendButton.disabled = false;
 				}
 			}
 
+			function startMouthAnimation() {
+				const startTime = Date.now();
+				mouthAnimation = setInterval(() => {
+					const t = (Date.now() - startTime) / 1000;
+					const mouthOpen = Math.abs(Math.sin(t * 6)) * 0.8;
+					if (mouthMesh) mouthMesh.scale.y = 0.2 + mouthOpen;
+				}, 50);
+			}
+
+			function stopMouthAnimation() {
+				if (mouthAnimation) clearInterval(mouthAnimation);
+				mouthAnimation = null;
+				if (mouthMesh) mouthMesh.scale.y = 0.2;
+			}
+
 			function speakText(text) {
-				if (speechUtterance) {
-					speechSynthesis.cancel();
-				}
+				if (speechUtterance) speechSynthesis.cancel();
 
 				speechUtterance = new SpeechSynthesisUtterance(text);
 				speechUtterance.rate = 0.9;
 				speechUtterance.pitch = 1.0;
 				speechUtterance.volume = 1.0;
 
-				// Get available voices and set a female voice if available
 				const voices = speechSynthesis.getVoices();
-				const femaleVoice = voices.find(voice => 
-					voice.name.includes('female') || 
-					voice.name.includes('Female') ||
-					voice.name.includes('Samantha') ||
-					voice.name.includes('Victoria')
+				const femaleVoice = voices.find(v =>
+					v.name.includes('female') || v.name.includes('Female') ||
+					v.name.includes('Samantha') || v.name.includes('Victoria')
 				);
-				if (femaleVoice) {
-					speechUtterance.voice = femaleVoice;
-				}
+				if (femaleVoice) speechUtterance.voice = femaleVoice;
 
 				isSpeaking = true;
 				status.textContent = 'Speaking...';
 				status.style.background = 'rgba(255, 193, 7, 0.8)';
 
-				speechUtterance.onstart = () => {
-					startMouthAnimation();
-				};
-
+				speechUtterance.onstart = startMouthAnimation;
 				speechUtterance.onend = () => {
 					isSpeaking = false;
 					stopMouthAnimation();
@@ -319,9 +294,8 @@
 					status.style.background = 'rgba(40, 167, 69, 0.8)';
 					sendButton.disabled = false;
 				};
-
-				speechUtterance.onerror = (event) => {
-					console.error('Speech synthesis error:', event);
+				speechUtterance.onerror = (e) => {
+					console.error('TTS error:', e);
 					isSpeaking = false;
 					stopMouthAnimation();
 					status.textContent = 'TTS Error';
@@ -332,31 +306,17 @@
 				speechSynthesis.speak(speechUtterance);
 			}
 
-			// Event listeners
+			// Events
 			sendButton.addEventListener('click', sendMessage);
-			chatInput.addEventListener('keypress', (e) => {
-				if (e.key === 'Enter') {
-					sendMessage();
-				}
-			});
-
-			// Handle window resize
+			chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 			window.addEventListener('resize', () => {
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
 				renderer.setSize(window.innerWidth, window.innerHeight);
 			});
+			speechSynthesis.onvoiceschanged = () => console.log('Voices loaded:', speechSynthesis.getVoices().length);
 
-			// Initialize speech synthesis voices
-			speechSynthesis.onvoiceschanged = () => {
-				console.log('Voices loaded:', speechSynthesis.getVoices().length);
-			};
-
-			// animate
-			const clock = new THREE.Clock();
-			clock.start();
-
-			// animate loop
+			// Loop
 			function animate() {
 				requestAnimationFrame(animate);
 				renderer.render(scene, camera);
