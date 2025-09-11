@@ -6,7 +6,7 @@ This project provides a web-based viewer for the Samantha VRM model, integrated 
 
 1. Create an OpenWebUI instance.
 
-2. Pull the Ollama model "sparksammy/super-sexy-samantha" or whatever model
+2. Pull the Ollama model "sparksammy/samantha-super-s" or whatever model
 
 3. Obtain your OpenWebUI host URL (must be public - Cloudflare tunnels recommended), OpenWebUI API Key (not the Pollinations one), and the name of the model you just created. Take note of them.
 
