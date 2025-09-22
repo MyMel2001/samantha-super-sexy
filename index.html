@@ -122,11 +122,11 @@
 			let isSpeaking = false;
 			let speechUtterance = null;
 			let mouthAnimation = null;
-			let openWebUIEndpoint = 'https://personal-ai.nodemixaholic.com';
+			let openWebUIEndpoint = 'http://192.168.50.134:11337/v1';
 			let apiKey = 'sk-6efb9b029ef54f46854bb3eaef9d28a9';
-			let modelName = 'sparksammy/samantha-super-s';
+			let modelName = 'qwen3-samantha-sexy.modelfile_0';
 			
-			let conversationHistory = [{ role: 'system', content: 'You are Samantha, a friendly and helpful AI companion.' }];
+			let conversationHistory = [];
 
 			let currentModel = null;
 			let mouthMesh = null;
@@ -206,7 +206,7 @@ loader.load(
 				conversationHistory.push({ role: 'user', content: message });
 
 				try {
-					const response = await fetch(`${openWebUIEndpoint}/api/chat/completions`, {
+					const response = await fetch(`${openWebUIEndpoint}/chat/completions`, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
