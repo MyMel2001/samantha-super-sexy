@@ -1,6 +1,6 @@
 # Samantha Viewer ***(Super Sexy Mode)***
 
-This project provides a web-based viewer for the Samantha VRM model, integrated with an AI chat powered by OpenWebUI. He has a super cool tail only on one side that wasn't an accident at all! :P
+This project provides a web-based viewer for the Samantha 3D model, integrated with an AI chat powered by OpenWebUI. He has a super cool tail only on one side that wasn't an accident at all! :P
 
 ## Setup Instructions
 
